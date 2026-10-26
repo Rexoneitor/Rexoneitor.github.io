@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>José Aponte · Desarrollador de software</title>
+<meta name="description" content="Portafolio de José Aponte, desarrollador de software. Un océano navegable donde cada isla presenta una parte de mi trabajo.">
+<meta name="theme-color" content="#8FD3F0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+  // Modo guardado o el del sistema, antes de pintar nada
+  (function () {
+    let m = null;
+    try { m = localStorage.getItem("modo"); } catch (e) {}
+    if (!m) m = matchMedia("(prefers-color-scheme: dark)").matches ? "noche" : "dia";
+    document.documentElement.dataset.modo = m;
+  })();
+</script>
+<style>
+  :root {
+    --tinta: #0E2A38;
+    --tinta-suave: #4A6676;
+    --acento: #FF6B4A;
+    --acento-2: #0F97AC;
+    --vidrio: rgba(255, 255, 255, .84);
+    --superficie: #FFFFFF;
+    --borde: rgba(14, 42, 56, .12);
+    --sombra: rgba(14, 42, 56, .45);
+    --codigo: #0E2A38;
+  }
+  html[data-modo="noche"] {
+    --tinta: #EAF2F8;
+    --tinta-suave: #A3B5C6;
+    --acento: #FF8466;
+    --acento-2: #4FD3E3;
+    --vidrio: rgba(14, 26, 50, .78);
+    --superficie: #15243F;
+    --borde: rgba(255, 255, 255, .12);
+    --sombra: rgba(0, 0, 0, .6);
+    --codigo: #0A1426;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    color: var(--tinta);
+    background: #7ECBEB;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .cielo { position: fixed; inset: 0; transition: opacity 1.4s ease; }
+  .cielo.dia { background: linear-gradient(180deg, #7ECBEB 0%, #BFE9F5 48%, #FFE6C4 100%); }
+  .cielo.noche { background: linear-gradient(180deg, #070D1F 0%, #13204A 55%, #2B3462 100%); opacity: 0; }
+  html[data-modo="noche"] .cielo.noche { opacity: 1; }
+  .mono { font-family: "JetBrains Mono", monospace; }
+  canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+  button { font: inherit; color: inherit; }
+  a, button { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--acento-2); outline-offset: 2px; }
+
+  /* HUD */
+  .hud { position: fixed; z-index: 5; }
+  .vidrio { background: var(--vidrio); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--borde); box-shadow: 0 10px 30px -16px var(--sombra); }
+  .marca { top: 18px; left: 18px; padding: 10px 16px; border-radius: 16px; }
+  .marca b { display: block; font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+  .marca span { font-size: .76rem; color: var(--tinta-suave); }
+  .contadores { top: 18px; right: 18px; display: flex; gap: 8px; align-items: center; }
+  .chip { border-radius: 999px; padding: 9px 14px; font-size: .82rem; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+  button.chip { cursor: pointer; transition: transform .2s; }
+  button.chip:hover { transform: translateY(-2px); }
+  .telemetria { left: 18px; bottom: 18px; font-size: .7rem; padding: 10px 14px; border-radius: 12px; line-height: 1.7; min-width: 190px; }
+  .telemetria i { color: var(--acento-2); font-style: normal; }
+  .ayuda { left: 50%; bottom: 18px; transform: translateX(-50%); font-size: .8rem; padding: 10px 18px; border-radius: 999px; white-space: nowrap; transition: opacity .8s; pointer-events: none; }
+  .ayuda kbd { font-family: "JetBrains Mono", monospace; border: 1px solid var(--borde); padding: 1px 6px; border-radius: 5px; font-size: .72rem; }
+  .radar { right: 18px; bottom: 18px; width: 132px; height: 132px; border-radius: 50%; padding: 0; overflow: hidden; }
+  .radar canvas { width: 100%; height: 100%; display: block; }
+
+  /* Etiquetas */
+  .etiqueta {
+    position: fixed; left: 0; top: 0; z-index: 4; pointer-events: none;
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: .85rem; color: var(--tinta);
+    background: var(--superficie); padding: 6px 12px 6px 8px; border-radius: 999px;
+    box-shadow: 0 8px 24px -10px var(--sombra);
+    white-space: nowrap; will-change: transform; transition: opacity .3s;
+  }
+  .etiqueta .n { font-family: "JetBrains Mono", monospace; font-size: .68rem; color: var(--acento-2); background: color-mix(in srgb, var(--acento-2) 14%, transparent); padding: 2px 6px; border-radius: 999px; }
+  .etiqueta.visitada .n { background: var(--acento-2); color: var(--superficie); }
+  .etiqueta::after { content: ""; position: absolute; left: 50%; bottom: -5px; width: 10px; height: 10px; background: var(--superficie); transform: translateX(-50%) rotate(45deg); }
+
+  /* Panel */
+  .panel {
+    position: fixed; z-index: 6; right: 18px; top: 50%; width: min(410px, calc(100vw - 36px));
+    max-height: calc(100vh - 200px); overflow: auto; overscroll-behavior: contain;
+    border-radius: 24px; padding: 30px 28px 28px;
+    transform: translate(30px, -50%); opacity: 0; pointer-events: none;
+    transition: opacity .35s ease, transform .45s cubic-bezier(.2,.9,.2,1.05);
+  }
+  .panel::before { content: ""; position: absolute; left: 28px; top: 0; width: 56px; height: 4px; border-radius: 0 0 4px 4px; background: var(--acento); }
+  .panel.on { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
+  .panel .cerrar { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--borde); background: var(--superficie); cursor: pointer; font-size: 1.05rem; line-height: 1; }
+  .kicker { font-family: "JetBrains Mono", monospace; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--acento-2); font-weight: 600; }
+  .contenido h2 { font-size: 2rem; line-height: 1.05; font-weight: 800; letter-spacing: -.02em; margin: 10px 0 6px; }
+  .contenido .rol { font-family: "JetBrains Mono", monospace; font-size: .8rem; color: var(--acento); margin-bottom: 14px; }
+  .contenido p { color: var(--tinta-suave); line-height: 1.62; margin-bottom: 12px; }
+  .contenido .lema { font-size: 1.3rem; font-weight: 800; color: var(--tinta); line-height: 1.2; margin: 18px 0; padding-left: 14px; border-left: 3px solid var(--acento); }
+  .contenido .lema em { color: var(--acento); font-style: normal; }
+  .contenido .nota { font-size: .86rem; }
+  .contenido pre {
+    background: var(--codigo); color: #DDEFF5; border-radius: 16px; padding: 16px 18px; margin: 14px 0;
+    font-family: "JetBrains Mono", monospace; font-size: .76rem; line-height: 1.7; overflow-x: auto;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .k { color: #FF9D85; } .s { color: #8EE3C8; } .p { color: #7FD0F0; } .c { color: #7C97A6; }
+  .lista { list-style: none; display: grid; gap: 10px; margin: 6px 0 18px; }
+  .lista li { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; color: var(--tinta-suave); line-height: 1.45; font-size: .92rem; }
+  .lista b { color: var(--tinta); display: block; margin-bottom: 2px; }
+  .versiones { list-style: none; display: grid; gap: 14px; margin-top: 6px; }
+  .versiones li { display: grid; grid-template-columns: 50px 1fr; gap: 10px; color: var(--tinta-suave); line-height: 1.45; font-size: .92rem; }
+  .versiones span { font-family: "JetBrains Mono", monospace; color: var(--acento); font-weight: 600; padding-top: 1px; }
+  .versiones b { display: block; color: var(--tinta); }
+  .btn { display: inline-block; margin: 4px 6px 0 0; background: var(--acento); color: #fff; text-decoration: none; font-weight: 600; padding: 11px 18px; border-radius: 999px; font-size: .88rem; transition: transform .2s; overflow-wrap: anywhere; border: 0; cursor: pointer; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.ghost { background: transparent; color: var(--tinta); border: 1px solid var(--borde); }
+
+  /* Aviso */
+  .toast {
+    position: fixed; z-index: 8; left: 50%; top: 84px; transform: translate(-50%, -16px); opacity: 0;
+    border-radius: 18px; padding: 14px 18px; max-width: min(430px, calc(100vw - 32px));
+    transition: opacity .35s, transform .35s; pointer-events: none;
+    display: flex; gap: 12px; align-items: flex-start; line-height: 1.45; font-size: .92rem;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .toast .ic { font-size: 1.4rem; line-height: 1.1; }
+  .toast small { display: block; font-family: "JetBrains Mono", monospace; color: var(--acento-2); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 2px; }
+
+  /* Intro */
+  .intro { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; transition: opacity .6s; }
+  .intro.fuera { opacity: 0; pointer-events: none; }
+  .tarjeta { border-radius: 28px; padding: 38px 36px 30px; max-width: 500px; text-align: left; }
+  .tarjeta h1 { font-size: clamp(2.4rem, 8vw, 3.4rem); line-height: .98; font-weight: 800; letter-spacing: -.035em; margin: 14px 0 6px; }
+  .tarjeta .rol { font-family: "JetBrains Mono", monospace; font-size: .85rem; color: var(--acento); margin-bottom: 18px; }
+  .tarjeta p { color: var(--tinta-suave); line-height: 1.6; }
+  .tarjeta .acciones { display: flex; gap: 10px; flex-wrap: wrap; margin: 26px 0 20px; }
+  .tarjeta .grande { border: 0; cursor: pointer; background: var(--acento); color: #fff; font-weight: 800; font-size: 1rem; padding: 14px 24px; border-radius: 999px; box-shadow: 0 12px 24px -12px var(--acento); transition: transform .2s; }
+  .tarjeta .grande:hover { transform: translateY(-2px); }
+  .tarjeta .grande:disabled { opacity: .5; cursor: wait; transform: none; }
+  .tarjeta .suave { border: 1px solid var(--borde); background: transparent; cursor: pointer; padding: 14px 20px; border-radius: 999px; font-weight: 600; }
+  .terminal { font-family: "JetBrains Mono", monospace; font-size: .72rem; color: var(--tinta-suave); background: color-mix(in srgb, var(--tinta) 6%, transparent); border-radius: 12px; padding: 10px 14px; line-height: 1.7; }
+  .terminal .ok { color: var(--acento-2); }
+
+  /* Modo lectura */
+  .lectura { position: fixed; inset: 0; z-index: 12; overflow: auto; background: var(--superficie); display: none; }
+  html[data-modo="dia"] .lectura { background: linear-gradient(180deg, #EEF8FB, #FFF6E8); }
+  html[data-modo="noche"] .lectura { background: linear-gradient(180deg, #0B1428, #15213E); }
+  .lectura.on { display: block; }
+  .lectura .hoja { max-width: 720px; margin: 0 auto; padding: 48px 16px 80px; }
+  .lectura header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .lectura header h1 { font-size: 2.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; margin-top: 8px; }
+  .lectura section { background: var(--vidrio); border: 1px solid var(--borde); border-radius: 24px; padding: 28px; margin-bottom: 16px; }
+
+  @media (max-width: 720px) {
+    .marca, .telemetria { display: none; }
+    .contadores { left: 12px; right: 12px; top: 12px; justify-content: flex-end; flex-wrap: wrap; }
+    .chip { padding: 8px 11px; font-size: .76rem; }
+    .chip .txt { display: none; }
+    .radar { left: 12px; right: auto; top: 12px; bottom: auto; width: 84px; height: 84px; }
+    .ayuda { bottom: auto; top: 108px; font-size: .74rem; white-space: normal; text-align: center; width: max-content; max-width: calc(100vw - 32px); }
+    .panel { top: auto; bottom: 12px; right: 12px; left: 12px; width: auto; max-height: 50vh; transform: translateY(30px); padding: 24px 20px 20px; }
+    .panel.on { transform: none; }
+    .contenido h2 { font-size: 1.6rem; }
+    .toast { top: 108px; }
+    .tarjeta { padding: 30px 24px 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .panel, .toast, .intro, .cielo { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="cielo dia"></div>
+<div class="cielo noche"></div>
+
+<canvas id="c" aria-label="Océano interactivo: navega un barco entre islas"></canvas>
+
+<div class="hud marca vidrio"><b>José Aponte</b><span>Desarrollador de software</span></div>
+<div class="hud contadores">
+  <span class="chip vidrio" id="cont-islas" title="Islas visitadas">🏝️ <span>0/5</span></span>
+  <span class="chip vidrio" id="cont-botellas" title="Mensajes encontrados">✉️ <span>0/6</span></span>
+  <button class="chip vidrio" id="modo" aria-label="Cambiar entre día y noche"></button>
+  <button class="chip vidrio" id="abrir-lectura">📄 <span class="txt">Versión clásica</span></button>
+</div>
+<div class="hud radar vidrio" aria-hidden="true"><canvas id="radar"></canvas></div>
+<div class="hud telemetria vidrio mono" id="telemetria" aria-hidden="true"></div>
+<div class="hud ayuda vidrio" id="ayuda"><kbd>W A S D</kbd> o <kbd>flechas</kbd> para navegar · clic sobre el agua para fijar rumbo</div>
+
+<div id="etiquetas"></div>
+
+<aside class="panel vidrio" id="panel" aria-live="polite">
+  <button class="cerrar" id="cerrar" aria-label="Cerrar">×</button>
+  <p class="kicker" id="panel-kicker"></p>
+  <div class="contenido" id="panel-contenido"></div>
+</aside>
+
+<div class="toast vidrio" id="toast"><span class="ic" id="toast-ic"></span><div><small id="toast-t"></small><span id="toast-m"></span></div></div>
+
+<div class="intro" id="intro">
+  <div class="tarjeta vidrio">
+    <p class="kicker">Portafolio</p>
+    <h1>José Aponte</h1>
+    <p class="rol">Desarrollador de software · Ingeniería de Sistemas</p>
+    <p>Este portafolio es un océano navegable. Cada isla presenta una parte de mi trabajo: quién soy, con qué tecnologías trabajo, qué construyo y cómo contactarme.</p>
+    <div class="acciones">
+      <button class="grande" id="zarpar" disabled>Comenzar a navegar ⛵</button>
+      <button class="suave" id="leer">Versión clásica</button>
+    </div>
+    <div class="terminal" id="terminal">$ npm run zarpar<br><span id="estado">cargando el océano…</span></div>
+  </div>
+</div>
+
+<div class="lectura" id="lectura">
+  <div class="hoja">
+    <header>
+      <div><p class="kicker">Portafolio · versión clásica</p><h1>José Aponte</h1></div>
+      <button class="btn" id="volver">Volver al océano ⛵</button>
+    </header>
+    <div id="lectura-secciones"></div>
+  </div>
+</div>
+
+<script>
+  // Contenido de cada isla. También alimenta la versión clásica.
+  window.CONTENIDO = {
+    inicio: {
+      nombre: "Sobre mí", kicker: "Isla 01 · Inicio",
+      html: `<h2>José Aponte</h2>
+        <p class="rol">Desarrollador de software</p>
+        <p>Estudio Ingeniería de Sistemas en la Isla de Margarita, Venezuela. Me dedico a convertir procesos desordenados en herramientas claras: aplicaciones web y de escritorio, y sistemas de gestión de punta a punta.</p>
+        <p class="lema">No tengo el mejor mapa.<br>Tengo <em>rumbo</em>.</p>
+        <p class="nota">Recorre las islas para conocer mi stack, mis proyectos y mi trayectoria.</p>`
+    },
+    faro: {
+      nombre: "Stack técnico", kicker: "Isla 02 · Faro del código",
+      html: `<h2>Stack técnico</h2>
+        <p>Trabajo en todas las capas de una aplicación: modelo de datos, lógica de negocio e interfaz.</p>
+<pre><code><span class="k">const</span> jose = {
+  rol: <span class="s">"desarrollador de software"</span>,
+  web: [<span class="s">"React"</span>, <span class="s">"Next.js"</span>, <span class="s">"TypeScript"</span>, <span class="s">"Vite"</span>],
+  datos: [<span class="s">"SQL"</span>, <span class="s">"PostgreSQL"</span>, <span class="s">"Prisma"</span>, <span class="s">"Supabase"</span>],
+  escritorio: [<span class="s">"Electron"</span>, <span class="s">"Node.js"</span>, <span class="s">"SQLite"</span>],
+  extra: [<span class="s">"Python"</span>, <span class="s">"Blender API"</span>, <span class="s">"IA aplicada"</span>],
+};</code></pre>
+        <p class="nota">Prioridades: código mantenible, datos bien modelados e interfaces que no necesitan manual.</p>`
+    },
+    astillero: {
+      nombre: "Proyectos", kicker: "Isla 03 · Astillero",
+      html: `<h2>Proyectos</h2>
+        <p>Construyo software de principio a fin: modelo los datos, diseño la interfaz y lo dejo funcionando.</p>
+        <ul class="lista">
+          <li><b>Aplicaciones de escritorio</b>Electron, React y SQLite. Locales, privadas y con copias de seguridad automáticas.</li>
+          <li><b>Aplicaciones web progresivas</b>Funcionan sin conexión y se sincronizan entre dispositivos con Supabase.</li>
+          <li><b>Sistemas de gestión</b>Next.js, Prisma y PostgreSQL: contratos, pagos, reservas y reportes en Excel.</li>
+          <li><b>Modelado 3D paramétrico</b>Geometría generada con Python sobre la API de Blender.</li>
+        </ul>
+        <a class="btn" href="https://github.com/Rexoneitor" target="_blank" rel="noopener">Ver repositorios en GitHub ↗</a>`
+    },
+    bitacora: {
+      nombre: "Trayectoria", kicker: "Isla 04 · Bitácora",
+      html: `<h2>Trayectoria</h2>
+        <p>Me pienso como un proyecto en desarrollo: cada etapa corrigió algo de la anterior.</p>
+        <ol class="versiones">
+          <li><span>v0.1</span><div><b>Curiosidad</b>Crecí en la Isla de Margarita desarmando cosas para entender cómo funcionaban.</div></li>
+          <li><span>v0.5</span><div><b>Ingeniería de Sistemas</b>Formación universitaria, hoy en su etapa final. Ahí aprendí a ver todo como un sistema.</div></li>
+          <li><span>v0.8</span><div><b>Experiencia en remoto</b>Gestiono el CRM, la base de datos de prospectos y las campañas de correo de una agencia internacional.</div></li>
+          <li><span>v1.0</span><div><b>Próxima versión</b>Desarrollar productos propios y para clientes, probados con usuarios reales.</div></li>
+        </ol>`
+    },
+    puerto: {
+      nombre: "Contacto", kicker: "Isla 05 · Puerto",
+      html: `<h2>Contacto</h2>
+        <p>Estoy abierto a proyectos, colaboraciones y oportunidades laborales. Escríbeme y te respondo.</p>
+        <a class="btn" href="mailto:joseguillermo3004@gmail.com">joseguillermo3004@gmail.com</a>
+        <a class="btn ghost" href="https://github.com/Rexoneitor" target="_blank" rel="noopener">GitHub ↗</a>`
+    }
+  };
+
+  // Versión clásica: funciona aunque el 3D no cargue
+  (function () {
+    const cont = document.getElementById("lectura-secciones");
+    for (const k of ["inicio", "faro", "astillero", "bitacora", "puerto"]) {
+      const d = window.CONTENIDO[k];
+      const s = document.createElement("section");
+      s.className = "contenido";
+      s.innerHTML = `<p class="kicker">${d.kicker}</p>${d.html}`;
+      cont.appendChild(s);
+    }
+    const lectura = document.getElementById("lectura");
+    window.lecturaAbierta = false;
+    window.abrirLectura = () => {
+      lectura.classList.add("on"); window.lecturaAbierta = true;
+      document.getElementById("intro").classList.add("fuera");
+    };
+    document.getElementById("leer").onclick = window.abrirLectura;
+    document.getElementById("abrir-lectura").onclick = window.abrirLectura;
+    document.getElementById("volver").onclick = () => {
+      lectura.classList.remove("on"); window.lecturaAbierta = false;
+      if (window.empezar) window.empezar();
+    };
+    setTimeout(() => {
+      if (!window.oceanoListo) document.getElementById("estado").innerHTML = 'No se pudo cargar el 3D. <a href="#" onclick="abrirLectura();return false">Abrir la versión clásica</a>';
+    }, 9000);
+  })();
+</script>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from "three";
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const tactil = !matchMedia("(pointer: fine)").matches;
+const movil = innerWidth < 720 || tactil;
+const canvas = document.getElementById("c");
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !movil, alpha: true, powerPreference: "high-performance" });
+} catch (e) {
+  document.getElementById("estado").textContent = "Tu navegador no soporta 3D.";
+  window.abrirLectura();
+  throw e;
+}
+const PR_MAX = Math.min(devicePixelRatio, movil ? 1.5 : 2);
+let pr = PR_MAX;
+renderer.setPixelRatio(pr);
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xCFEFF6, 70, 190);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
+
+const hemi = new THREE.HemisphereLight(0xD8F3FF, 0x1C7F95, 1.25);
+scene.add(hemi);
+const sol = new THREE.DirectionalLight(0xFFE4BD, 1.8);
+sol.position.set(-60, 90, -40);
+scene.add(sol);
+
+// Materiales compartidos por color para reducir cambios de estado
+const cache = new Map();
+function mat(color, extra) {
+  if (extra) return new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: .85, ...extra });
+  if (!cache.has(color)) cache.set(color, new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: .85 }));
+  return cache.get(color);
+}
+
+// ── Olas (la misma fórmula vive en el shader del agua)
+const amp = reduce ? .5 : 1;
+function ola(x, z, t) {
+  return amp * (Math.sin(x * .16 + t * 1.1) * .35 + Math.sin(z * .21 - t * .9) * .3 + Math.sin((x + z) * .45 + t * 1.8) * .1);
+}
+
+// ── Agua: las olas se calculan en la GPU
+const TAM = 260, SEG = movil ? 72 : 104, PASO = TAM / SEG;
+const aguaGeo = new THREE.PlaneGeometry(TAM, TAM, SEG, SEG);
+aguaGeo.rotateX(-Math.PI / 2);
+const uAgua = {
+  uTime: { value: 0 }, uAmp: { value: amp },
+  uHondo: { value: new THREE.Color(0x0F8FA8) }, uClaro: { value: new THREE.Color(0x6FDDE3) }, uBrillo: { value: 0 }
+};
+const aguaMat = new THREE.MeshStandardMaterial({ flatShading: true, roughness: .3, metalness: .05 });
+aguaMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, uAgua);
+  sh.vertexShader = sh.vertexShader
+    .replace("#include <common>", `#include <common>
+      uniform float uTime; uniform float uAmp; varying float vH;
+      float ola(vec2 p, float t) { return uAmp * (sin(p.x * .16 + t * 1.1) * .35 + sin(p.y * .21 - t * .9) * .3 + sin((p.x + p.y) * .45 + t * 1.8) * .1); }`)
+    .replace("#include <begin_vertex>", `#include <begin_vertex>
+      vec4 mundo = modelMatrix * vec4(transformed, 1.0);
+      float hh = ola(mundo.xz, uTime);
+      transformed.y = hh; vH = hh;`);
+  sh.fragmentShader = sh.fragmentShader
+    .replace("#include <common>", `#include <common>
+      uniform vec3 uHondo; uniform vec3 uClaro; uniform float uBrillo; varying float vH;`)
+    .replace("#include <color_fragment>", `#include <color_fragment>
+      float kk = clamp((vH + .6) / 1.3, 0., 1.);
+      diffuseColor.rgb = mix(uHondo, uClaro, kk);`)
+    .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+      totalEmissiveRadiance += uClaro * uBrillo * smoothstep(.45, .85, kk);`);
+};
+const agua = new THREE.Mesh(aguaGeo, aguaMat);
+agua.frustumCulled = false;
+scene.add(agua);
+
+// ── Sol / luna y estrellas
+const astro = new THREE.Mesh(new THREE.SphereGeometry(14, 24, 16), new THREE.MeshBasicMaterial({ color: 0xFFF1C9, fog: false }));
+astro.position.set(-140, 70, -260);
+scene.add(astro);
+const halo = new THREE.Mesh(new THREE.SphereGeometry(26, 24, 16), new THREE.MeshBasicMaterial({ color: 0xFFF1C9, fog: false, transparent: true, opacity: .1, depthWrite: false }));
+halo.position.copy(astro.position);
+scene.add(halo);
+
+const nEstrellas = movil ? 400 : 800, pEstrellas = new Float32Array(nEstrellas * 3);
+for (let i = 0; i < nEstrellas; i++) {
+  const a = Math.random() * Math.PI * 2, e = Math.random() * Math.PI * .45 + .05, r = 240;
+  pEstrellas[i * 3] = Math.cos(a) * Math.cos(e) * r;
+  pEstrellas[i * 3 + 1] = Math.sin(e) * r;
+  pEstrellas[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
+}
+const estrellasGeo = new THREE.BufferGeometry();
+estrellasGeo.setAttribute("position", new THREE.BufferAttribute(pEstrellas, 3));
+const estrellas = new THREE.Points(estrellasGeo, new THREE.PointsMaterial({ color: 0xFFFFFF, size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0, depthWrite: false }));
+scene.add(estrellas);
+
+// ── Nubes
+const nubes = [];
+const nubeMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, flatShading: true, roughness: 1 });
+const nubeGeo = new THREE.IcosahedronGeometry(1, 0);
+for (let i = 0; i < (movil ? 8 : 12); i++) {
+  const g = new THREE.Group();
+  const n = 3 + Math.floor(Math.random() * 3);
+  for (let j = 0; j < n; j++) {
+    const m = new THREE.Mesh(nubeGeo, nubeMat);
+    m.scale.setScalar(2.2 + Math.random() * 2);
+    m.position.set(j * 2.6 - n, Math.random() * 1.2, Math.random() * 2);
+    g.add(m);
+  }
+  g.position.set(Math.random() * 260 - 130, 30 + Math.random() * 10, Math.random() * 220 - 160);
+  g.userData.v = .6 + Math.random() * .8;
+  scene.add(g); nubes.push(g);
+}
+
+// ── Barco
+function crearBarco(cHull = 0xF7F4EC, cAcento = 0xFF6B4A) {
+  const g = new THREE.Group();
+  const cascoGeo = new THREE.BoxGeometry(2.2, 1, 5, 2, 1, 6);
+  const p = cascoGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const z = p.getZ(i), y = p.getY(i);
+    const f = .12 + .88 * Math.pow((z + 2.5) / 5, .55);
+    p.setX(i, p.getX(i) * f * (y < 0 ? .62 : 1));
+  }
+  cascoGeo.computeVertexNormals();
+  g.add(new THREE.Mesh(cascoGeo, mat(cHull)));
+  const franja = new THREE.Mesh(new THREE.BoxGeometry(2.25, .18, 3.2), mat(cAcento));
+  franja.position.set(0, -.05, 1); g.add(franja);
+  const cubierta = new THREE.Mesh(new THREE.BoxGeometry(1.7, .1, 3.6), mat(0xC98D52));
+  cubierta.position.set(0, .52, .5); g.add(cubierta);
+  const cabina = new THREE.Mesh(new THREE.BoxGeometry(1.3, .9, 1.3), mat(0xFFFFFF));
+  cabina.position.set(0, 1, 1.2); g.add(cabina);
+  const techo = new THREE.Mesh(new THREE.BoxGeometry(1.5, .14, 1.5), mat(cAcento));
+  techo.position.set(0, 1.5, 1.2); g.add(techo);
+  const mastil = new THREE.Mesh(new THREE.CylinderGeometry(.07, .09, 4.6, 6), mat(0x8A5A33));
+  mastil.position.set(0, 2.8, -.3); g.add(mastil);
+  const forma = new THREE.Shape(); forma.moveTo(0, 0); forma.lineTo(0, 3.7); forma.lineTo(2, 0); forma.lineTo(0, 0);
+  const vela = new THREE.Mesh(new THREE.ShapeGeometry(forma), mat(0xFFFFFF, { side: THREE.DoubleSide }));
+  vela.rotation.y = Math.PI / 2; vela.position.set(0, 1, -.35); g.add(vela);
+  const bandera = new THREE.Mesh(new THREE.PlaneGeometry(.7, .4), mat(cAcento, { side: THREE.DoubleSide }));
+  bandera.position.set(0, 5, -.65); bandera.rotation.y = Math.PI / 2; g.add(bandera);
+  g.userData.bandera = bandera;
+  return g;
+}
+const barco = crearBarco();
+barco.rotation.order = "YXZ";
+scene.add(barco);
+// Farol del barco (solo se enciende de noche)
+const farolMat = new THREE.MeshStandardMaterial({ color: 0xFFE2A8, emissive: 0xFFC46B, emissiveIntensity: 0 });
+const farol = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), farolMat);
+farol.position.set(0, 1.85, 1.2); barco.add(farol);
+const luzFarol = new THREE.PointLight(0xFFC46B, 0, 16, 1.6);
+luzFarol.position.set(0, 2.2, 1.2); barco.add(luzFarol);
+
+// ── Islas y sus construcciones
+const hojaGeo = new THREE.BoxGeometry(2.6, .06, .55), cocoGeo = new THREE.IcosahedronGeometry(.2, 0);
+function palmera() {
+  const g = new THREE.Group();
+  let y = 0, x = 0;
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(.18 - i * .02, .22 - i * .02, 1, 6), mat(0x9C6B3E));
+    x += .12; s.position.set(x, y + .5, 0); s.rotation.z = -.12; g.add(s); y += .95;
+  }
+  for (let i = 0; i < 6; i++) {
+    const hoja = new THREE.Mesh(hojaGeo, mat(0x3FA35B));
+    const piv = new THREE.Group();
+    piv.position.set(x, y, 0); piv.rotation.y = i / 6 * Math.PI * 2;
+    hoja.position.x = 1.2; hoja.rotation.z = -.42; piv.add(hoja); g.add(piv);
+  }
+  for (let i = 0; i < 3; i++) {
+    const coco = new THREE.Mesh(cocoGeo, mat(0x6B4423));
+    coco.position.set(x + Math.cos(i * 2) * .25, y - .25, Math.sin(i * 2) * .25); g.add(coco);
+  }
+  return g;
+}
+
+const conoFaroMat = new THREE.MeshBasicMaterial({ color: 0xFFF3C4, transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false });
+function faro() {
+  const g = new THREE.Group();
+  let y = 0;
+  [0xFFFFFF, 0xE8553F, 0xFFFFFF, 0xE8553F].forEach((c, i) => {
+    const r0 = 1.15 - i * .1, r1 = r0 - .1;
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, 1.8, 10), mat(c));
+    s.position.y = y + .9; g.add(s); y += 1.8;
+  });
+  const balcon = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, .25, 10), mat(0x24414F));
+  balcon.position.y = y + .1; g.add(balcon);
+  const lampara = new THREE.Mesh(new THREE.SphereGeometry(.55, 10, 8), new THREE.MeshStandardMaterial({ color: 0xFFE08A, emissive: 0xFFD25E, emissiveIntensity: 1.6 }));
+  lampara.position.y = y + .75; g.add(lampara);
+  const techo = new THREE.Mesh(new THREE.ConeGeometry(.95, 1.1, 10), mat(0xE8553F));
+  techo.position.y = y + 1.75; g.add(techo);
+  const haz = new THREE.Group();
+  const cono = new THREE.Mesh(new THREE.ConeGeometry(3, 26, 20, 1, true), conoFaroMat);
+  cono.rotation.z = Math.PI / 2; cono.position.x = 13;
+  haz.add(cono); haz.position.y = y + .75; g.add(haz);
+  g.userData.haz = haz;
+  return g;
+}
+
+function astillero() {
+  const g = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(1, .2, 7), mat(0xB07A45));
+    t.position.set(-2 + i * 1.05, .1, 1); g.add(t);
+  }
+  const casco = crearBarco(0x2F86A8, 0xFFD25E);
+  casco.position.set(0, 1.6, 0); casco.rotation.set(0, .5, .08); casco.scale.setScalar(.9); g.add(casco);
+  const torre = new THREE.Mesh(new THREE.BoxGeometry(.5, 7, .5), mat(0xFFB703));
+  torre.position.set(3.4, 3.5, -1.6); g.add(torre);
+  const brazo = new THREE.Mesh(new THREE.BoxGeometry(5, .4, .4), mat(0xFFB703));
+  brazo.position.set(1.4, 7, -1.6); g.add(brazo);
+  const cable = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, 2.4, 4), mat(0x24414F));
+  cable.position.set(-.8, 5.8, -1.6); g.add(cable);
+  const caja = new THREE.Mesh(new THREE.BoxGeometry(.9, .9, .9), mat(0x14A3B8));
+  caja.position.set(-.8, 4.3, -1.6); g.add(caja);
+  g.userData.caja = caja;
+  return g;
+}
+
+const ventanaMat = new THREE.MeshStandardMaterial({ color: 0x9FD8E6, emissive: 0xFFB86B, emissiveIntensity: 0 });
+function bitacora() {
+  const g = new THREE.Group();
+  const casa = new THREE.Mesh(new THREE.BoxGeometry(3, 2.2, 2.6), mat(0xFFF6E6));
+  casa.position.set(-1.4, 1.1, -1); g.add(casa);
+  const tejado = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.6, 4), mat(0x14A3B8));
+  tejado.position.set(-1.4, 3, -1); tejado.rotation.y = Math.PI / 4; g.add(tejado);
+  const puerta = new THREE.Mesh(new THREE.BoxGeometry(.7, 1.2, .1), mat(0xB07A45));
+  puerta.position.set(-1.4, .6, .32); g.add(puerta);
+  [-2.35, -.45].forEach(x => {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(.55, .5, .08), ventanaMat);
+    v.position.set(x, 1.35, .32); g.add(v);
+  });
+  const atril = new THREE.Mesh(new THREE.CylinderGeometry(.12, .18, 1.4, 6), mat(0x8A5A33));
+  atril.position.set(2, .7, .8); g.add(atril);
+  const libro = new THREE.Group();
+  [-1, 1].forEach(s => {
+    const pagina = new THREE.Mesh(new THREE.BoxGeometry(1.1, .08, 1.4), mat(0xFFFFFF));
+    pagina.position.x = s * .52; pagina.rotation.z = s * -.22; libro.add(pagina);
+  });
+  libro.add(new THREE.Mesh(new THREE.BoxGeometry(.12, .12, 1.45), mat(0xFF6B4A)));
+  libro.position.set(2, 1.5, .8); libro.rotation.x = -.35; g.add(libro);
+  g.userData.libro = libro;
+  return g;
+}
+
+function puerto() {
+  const g = new THREE.Group();
+  for (let i = 0; i < 6; i++) {
+    const s = new THREE.Mesh(new THREE.CylinderGeometry(.14, .2, 1.4, 6), mat(i % 2 ? 0xE8553F : 0xFFFFFF));
+    s.position.y = .7 + i * 1.4; g.add(s);
+  }
+  const luz = new THREE.Mesh(new THREE.SphereGeometry(.35, 10, 8), new THREE.MeshStandardMaterial({ color: 0xFF6B4A, emissive: 0xFF3B1F, emissiveIntensity: 1.5 }));
+  luz.position.y = 9; g.add(luz);
+  const buzon = new THREE.Group();
+  const caja = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1, 1.6), mat(0x14A3B8));
+  caja.position.y = 1.5; buzon.add(caja);
+  const tapa = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 1.6, 10, 1, false, 0, Math.PI), mat(0x14A3B8));
+  tapa.rotation.x = Math.PI / 2; tapa.rotation.z = Math.PI / 2; tapa.position.y = 2; buzon.add(tapa);
+  const pata = new THREE.Mesh(new THREE.BoxGeometry(.2, 1, .2), mat(0x8A5A33));
+  pata.position.y = .5; buzon.add(pata);
+  const bandera = new THREE.Mesh(new THREE.BoxGeometry(.08, .8, .4), mat(0xFF6B4A));
+  bandera.position.set(.65, 2.2, -.4); buzon.add(bandera);
+  buzon.position.set(2.4, 0, 1); g.add(buzon);
+  g.userData.luz = luz;
+  return g;
+}
+
+const llamaMat = new THREE.MeshStandardMaterial({ color: 0xFFB347, emissive: 0xFF7A1F, emissiveIntensity: 0, transparent: true, opacity: 0 });
+let luzFogata;
+function inicio() {
+  const g = new THREE.Group();
+  const poste = new THREE.Mesh(new THREE.BoxGeometry(.25, 2.6, .25), mat(0x8A5A33));
+  poste.position.set(0, 1.3, 0); g.add(poste);
+  const cartel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, .15), mat(0xFFF6E6));
+  cartel.position.set(0, 2.4, 0); g.add(cartel);
+  const marco = new THREE.Mesh(new THREE.BoxGeometry(2.8, .15, .2), mat(0xFF6B4A));
+  marco.position.set(0, 3, 0); g.add(marco);
+  const sombrilla = new THREE.Mesh(new THREE.ConeGeometry(1.8, .7, 8), mat(0xFF6B4A));
+  sombrilla.position.set(-2.6, 2.4, 1.2); g.add(sombrilla);
+  const palo = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 2.4, 5), mat(0xFFFFFF));
+  palo.position.set(-2.6, 1.2, 1.2); g.add(palo);
+  // Fogata
+  const fogata = new THREE.Group();
+  [0, Math.PI / 2].forEach(r => {
+    const tronco = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, 1.3, 6), mat(0x6B4423));
+    tronco.rotation.set(Math.PI / 2, 0, 0); tronco.rotation.y = r; tronco.position.y = .12; fogata.add(tronco);
+  });
+  const llama = new THREE.Mesh(new THREE.ConeGeometry(.38, 1, 7), llamaMat);
+  llama.position.y = .6; fogata.add(llama);
+  luzFogata = new THREE.PointLight(0xFF8A3D, 0, 20, 1.5);
+  luzFogata.position.y = 1.2; fogata.add(luzFogata);
+  fogata.position.set(2.2, 0, 1.4); g.add(fogata);
+  g.userData.llama = llama;
+  return g;
+}
+
+const islas = [];
+const espumaGeo = new THREE.RingGeometry(1.15, 1.4, 40);
+espumaGeo.rotateX(-Math.PI / 2);
+function crearIsla(clave, num, x, z, r, props) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  const arena = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.18, 2.4, 10), mat(0xF2D7A0));
+  arena.position.y = -.4; arena.rotation.y = Math.random(); g.add(arena);
+  const pasto = new THREE.Mesh(new THREE.CylinderGeometry(r * .68, r * .8, .6, 9), mat(0x7CC77A));
+  pasto.position.y = 1; pasto.rotation.y = Math.random(); g.add(pasto);
+  for (let i = 0; i < 4; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const roca = new THREE.Mesh(new THREE.DodecahedronGeometry(.6 + Math.random() * .8, 0), mat(0x9AA3A8));
+    roca.position.set(Math.cos(a) * r * 1.05, .1, Math.sin(a) * r * 1.05); g.add(roca);
+  }
+  const espuma = new THREE.Mesh(espumaGeo, new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: .5, depthWrite: false }));
+  espuma.scale.setScalar(r); espuma.position.y = .35; g.add(espuma);
+  const nPalmas = Math.max(1, Math.round(r / 3));
+  for (let i = 0; i < nPalmas; i++) {
+    const a = (i / nPalmas) * Math.PI * 2 + 1;
+    const p = palmera();
+    p.position.set(Math.cos(a) * r * .55, 1.2, Math.sin(a) * r * .55);
+    p.rotation.y = Math.random() * Math.PI * 2;
+    p.scale.setScalar(.8 + Math.random() * .3);
+    g.add(p);
+  }
+  if (props) { props.position.y = 1.3; g.add(props); }
+  scene.add(g);
+
+  const etiqueta = document.createElement("div");
+  etiqueta.className = "etiqueta";
+  etiqueta.innerHTML = `<span class="n">${num}</span>${window.CONTENIDO[clave].nombre}`;
+  document.getElementById("etiquetas").appendChild(etiqueta);
+
+  const isla = { clave, x, z, r, g, espuma, props, etiqueta, visitada: false, alto: props ? 11 : 7 };
+  islas.push(isla);
+  return isla;
+}
+
+crearIsla("inicio", "01", 12, -7, 6, inicio());
+crearIsla("faro", "02", -36, -40, 6.5, faro());
+crearIsla("astillero", "03", 40, -44, 7.5, astillero());
+crearIsla("bitacora", "04", -60, 4, 7, bitacora());
+crearIsla("puerto", "05", 54, 6, 6.5, puerto());
+
+// ── Mensajes en botellas
+const mensajes = [
+  ["💪", "Fuera del código entreno con constancia. La disciplina me sirve igual en el gimnasio que frente al editor."],
+  ["🎧", "Trabajo con música de fondo: de boleros clásicos a rap en español."],
+  ["🌙", "Prefiero programar en modo oscuro. Por eso esta isla también tiene noche: pruébalo arriba."],
+  ["🐧", "Notipeng, mi aplicación de notas, nació porque necesitaba organizar mis propias ideas."],
+  ["🎮", "Los mundos con reglas propias, del anime a los videojuegos, me enseñaron a pensar en sistemas."],
+  ["🌊", "Crecí junto al mar. De ahí viene la idea de rumbo que guía este portafolio."]
+];
+const vidrioMat = new THREE.MeshStandardMaterial({ color: 0x9FE8D8, transparent: true, opacity: .85, roughness: .2, flatShading: true });
+const vidrioGeo = new THREE.CylinderGeometry(.38, .42, 1.3, 8), cuelloGeo = new THREE.CylinderGeometry(.16, .3, .5, 8);
+const corchoGeo = new THREE.CylinderGeometry(.16, .16, .25, 6), papelGeo = new THREE.CylinderGeometry(.22, .22, .8, 6);
+const posBotellas = [[-14, -20], [20, -18], [-50, -18], [6, -64], [66, -24], [-36, 28]];
+const botellas = posBotellas.map(([x, z], i) => {
+  const g = new THREE.Group();
+  const cuello = new THREE.Mesh(cuelloGeo, vidrioMat); cuello.position.y = .9;
+  const corcho = new THREE.Mesh(corchoGeo, mat(0xB07A45)); corcho.position.y = 1.25;
+  g.add(new THREE.Mesh(vidrioGeo, vidrioMat), cuello, corcho, new THREE.Mesh(papelGeo, mat(0xFFF6E6)));
+  g.rotation.z = 1.2;
+  g.position.set(x, 0, z);
+  scene.add(g);
+  return { g, x, z, i, cogida: false };
+});
+
+// ── Gaviotas
+const gaviotas = [];
+const alaGeo = new THREE.BoxGeometry(1.4, .06, .4);
+for (let i = 0; i < 5; i++) {
+  const g = new THREE.Group();
+  const izq = new THREE.Mesh(alaGeo, mat(0xFFFFFF)); izq.position.x = -.65;
+  const der = new THREE.Mesh(alaGeo, mat(0xFFFFFF)); der.position.x = .65;
+  const pi = new THREE.Group(); pi.add(izq); const pd = new THREE.Group(); pd.add(der);
+  g.add(pi, pd);
+  g.userData = { pi, pd, r: 14 + Math.random() * 30, a: Math.random() * 6, h: 14 + Math.random() * 8, v: .25 + Math.random() * .2, cx: Math.random() * 80 - 40, cz: Math.random() * 60 - 40 };
+  scene.add(g); gaviotas.push(g);
+}
+
+// ── Estela
+const estela = [];
+const estelaGeo = new THREE.CircleGeometry(.6, 10);
+estelaGeo.rotateX(-Math.PI / 2);
+for (let i = 0; i < 40; i++) {
+  const m = new THREE.Mesh(estelaGeo, new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0, depthWrite: false }));
+  m.visible = false; scene.add(m);
+  estela.push({ m, vida: 0 });
+}
+let estelaI = 0, estelaT = 0;
+
+// ── Marca de destino
+const marcaGeo = new THREE.RingGeometry(1, 1.35, 32);
+marcaGeo.rotateX(-Math.PI / 2);
+const marca = new THREE.Mesh(marcaGeo, new THREE.MeshBasicMaterial({ color: 0xFF6B4A, transparent: true, opacity: .9, depthWrite: false }));
+marca.visible = false; scene.add(marca);
+
+// ── Día y noche
+const tema = {
+  dia: { fog: 0xCFEFF6, cielo: 0xD8F3FF, suelo: 0x1C7F95, hemi: 1.25, sol: 0xFFE4BD, solI: 1.8, hondo: 0x0F8FA8, claro: 0x6FDDE3, nube: 0xFFFFFF, astro: 0xFFF1C9 },
+  noche: { fog: 0x142144, cielo: 0x6C80C8, suelo: 0x0A1A2E, hemi: .6, sol: 0xB4C8FF, solI: .55, hondo: 0x05182F, claro: 0x1B6F8E, nube: 0x3E4B72, astro: 0xEEF3FF }
+};
+for (const k in tema) for (const p in tema[k]) if (typeof tema[k][p] === "number" && p !== "hemi" && p !== "solI") tema[k][p] = new THREE.Color(tema[k][p]);
+let mezcla = document.documentElement.dataset.modo === "noche" ? 1 : 0, objetivo = mezcla;
+const L = (a, b) => a + (b - a) * mezcla;
+function aplicarTema() {
+  const d = tema.dia, n = tema.noche, m = mezcla;
+  scene.fog.color.copy(d.fog).lerp(n.fog, m);
+  hemi.color.copy(d.cielo).lerp(n.cielo, m);
+  hemi.groundColor.copy(d.suelo).lerp(n.suelo, m);
+  hemi.intensity = L(d.hemi, n.hemi);
+  sol.color.copy(d.sol).lerp(n.sol, m);
+  sol.intensity = L(d.solI, n.solI);
+  uAgua.uHondo.value.copy(d.hondo).lerp(n.hondo, m);
+  uAgua.uClaro.value.copy(d.claro).lerp(n.claro, m);
+  uAgua.uBrillo.value = m * .6;
+  nubeMat.color.copy(d.nube).lerp(n.nube, m);
+  astro.material.color.copy(d.astro).lerp(n.astro, m);
+  halo.material.color.copy(astro.material.color);
+  halo.material.opacity = .08 + m * .1;
+  astro.scale.setScalar(1 - m * .35);
+  estrellas.material.opacity = m;
+  conoFaroMat.opacity = .14 + m * .22;
+  farolMat.emissiveIntensity = m * 2;
+  luzFarol.intensity = m * 14;
+  ventanaMat.emissiveIntensity = m * 1.8;
+  llamaMat.opacity = m; llamaMat.emissiveIntensity = m * 2.2;
+  for (const g of gaviotas) g.visible = m < .5;
+  document.querySelector('meta[name="theme-color"]').content = m > .5 ? "#070D1F" : "#8FD3F0";
+}
+aplicarTema();
+
+const botonModo = document.getElementById("modo");
+function pintarBoton() {
+  const noche = document.documentElement.dataset.modo === "noche";
+  botonModo.innerHTML = noche ? '☀️ <span class="txt">Día</span>' : '🌙 <span class="txt">Noche</span>';
+}
+pintarBoton();
+botonModo.onclick = () => {
+  const nuevo = document.documentElement.dataset.modo === "noche" ? "dia" : "noche";
+  document.documentElement.dataset.modo = nuevo;
+  try { localStorage.setItem("modo", nuevo); } catch (e) {}
+  objetivo = nuevo === "noche" ? 1 : 0;
+  if (reduce) { mezcla = objetivo; aplicarTema(); }
+  pintarBoton();
+};
+
+// ── Controles
+const teclas = {};
+const teclasNav = ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"];
+addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (teclasNav.includes(k)) { teclas[k] = true; destino = null; if (k.startsWith("arrow")) e.preventDefault(); }
+});
+addEventListener("keyup", (e) => { teclas[e.key.toLowerCase()] = false; });
+addEventListener("blur", () => { for (const k in teclas) teclas[k] = false; });
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plano = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let destino = null, pulsando = false;
+function apuntar(e) {
+  ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const p = new THREE.Vector3();
+  if (ray.ray.intersectPlane(plano, p)) destino = p;
+}
+canvas.addEventListener("pointerdown", (e) => { if (!jugando) return; pulsando = true; canvas.setPointerCapture(e.pointerId); apuntar(e); });
+canvas.addEventListener("pointermove", (e) => { if (pulsando) apuntar(e); });
+const soltar = () => { pulsando = false; };
+canvas.addEventListener("pointerup", soltar);
+canvas.addEventListener("pointercancel", soltar);
+
+// ── Estado
+const estado = { x: 0, z: 0, rumbo: 0, vel: 0 };
+let jugando = false;
+
+// ── Interfaz
+const panel = document.getElementById("panel"), pKicker = document.getElementById("panel-kicker"), pCont = document.getElementById("panel-contenido");
+let islaAbierta = null;
+const descartada = {};
+function abrirPanel(isla) {
+  if (islaAbierta === isla.clave) return;
+  const d = window.CONTENIDO[isla.clave];
+  pKicker.textContent = d.kicker;
+  pCont.innerHTML = d.html;
+  panel.scrollTop = 0;
+  panel.classList.add("on");
+  islaAbierta = isla.clave;
+  if (!isla.visitada) {
+    isla.visitada = true;
+    isla.etiqueta.classList.add("visitada");
+    const n = islas.filter(i => i.visitada).length;
+    document.querySelector("#cont-islas span").textContent = `${n}/${islas.length}`;
+    if (n === islas.length) setTimeout(() => aviso("🗺️", "Recorrido completo", "Gracias por explorar. Si quieres conversar, el Puerto tiene mis datos de contacto."), 1500);
+  }
+}
+function cerrarPanel() { panel.classList.remove("on"); islaAbierta = null; }
+document.getElementById("cerrar").onclick = () => { if (islaAbierta) descartada[islaAbierta] = true; cerrarPanel(); };
+
+const toast = document.getElementById("toast");
+let toastT;
+function aviso(ic, t, m) {
+  document.getElementById("toast-ic").textContent = ic;
+  document.getElementById("toast-t").textContent = t;
+  document.getElementById("toast-m").textContent = m;
+  toast.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => toast.classList.remove("on"), 5200);
+}
+
+const telemetria = document.getElementById("telemetria"), ayuda = document.getElementById("ayuda");
+if (tactil) ayuda.textContent = "Toca el agua para fijar el rumbo · mantén pulsado para guiar el barco";
+let botellasCogidas = 0;
+
+window.empezar = () => {
+  document.getElementById("intro").classList.add("fuera");
+  jugando = true;
+};
+document.getElementById("zarpar").onclick = window.empezar;
+
+// ── Radar
+const radar = document.getElementById("radar"), rctx = radar.getContext("2d");
+function ajustarRadar() {
+  const r = radar.getBoundingClientRect(), d = Math.min(devicePixelRatio, 2);
+  radar.width = r.width * d; radar.height = r.height * d;
+  rctx.setTransform(d, 0, 0, d, 0, 0);
+}
+function dibujarRadar() {
+  const w = radar.clientWidth, c = w / 2, esc = (w / 2 - 8) / 105;
+  const noche = mezcla > .5;
+  rctx.clearRect(0, 0, w, w);
+  rctx.strokeStyle = noche ? "rgba(255,255,255,.12)" : "rgba(14,42,56,.12)";
+  rctx.lineWidth = 1;
+  for (const k of [.5, 1]) { rctx.beginPath(); rctx.arc(c, c, (w / 2 - 6) * k, 0, Math.PI * 2); rctx.stroke(); }
+  for (const i of islas) {
+    rctx.beginPath();
+    rctx.arc(c + i.x * esc, c + i.z * esc, Math.max(3, i.r * esc), 0, Math.PI * 2);
+    rctx.fillStyle = i.visitada ? (noche ? "#4FD3E3" : "#0F97AC") : (noche ? "rgba(255,255,255,.45)" : "rgba(14,42,56,.35)");
+    rctx.fill();
+  }
+  rctx.fillStyle = noche ? "#9FE8D8" : "#2BA58F";
+  for (const b of botellas) if (!b.cogida) { rctx.beginPath(); rctx.arc(c + b.x * esc, c + b.z * esc, 1.6, 0, Math.PI * 2); rctx.fill(); }
+  rctx.save();
+  rctx.translate(c + estado.x * esc, c + estado.z * esc);
+  rctx.rotate(estado.rumbo);
+  rctx.fillStyle = noche ? "#FF8466" : "#FF6B4A";
+  rctx.beginPath(); rctx.moveTo(0, -6); rctx.lineTo(4, 5); rctx.lineTo(-4, 5); rctx.closePath(); rctx.fill();
+  rctx.restore();
+}
+
+// ── Tamaño
+function ajustar() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.fov = w < 720 ? 60 : 45;
+  camera.updateProjectionMatrix();
+  ajustarRadar();
+}
+addEventListener("resize", ajustar);
+ajustar();
+
+// ── Bucle
+const reloj = new THREE.Clock();
+const camOffset = new THREE.Vector3(0, 21, 25), mirar = new THREE.Vector3(), tmp = new THREE.Vector3();
+let movido = false, cuadros = 0, tiempoMedida = 0, ultimoHud = 0;
+
+function angDif(a, b) { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(reloj.getDelta(), .05), t = reloj.elapsedTime;
+  if (window.lecturaAbierta) return;
+
+  // Calidad adaptable: si va lento, se baja la resolución
+  cuadros++; tiempoMedida += dt;
+  if (tiempoMedida > 2) {
+    const fps = cuadros / tiempoMedida;
+    if (fps < 42 && pr > 1) { pr = Math.max(1, pr - .25); renderer.setPixelRatio(pr); ajustar(); }
+    cuadros = 0; tiempoMedida = 0;
+  }
+
+  // Transición día / noche
+  if (Math.abs(objetivo - mezcla) > .001) {
+    mezcla += Math.sign(objetivo - mezcla) * Math.min(Math.abs(objetivo - mezcla), dt / 1.4);
+    aplicarTema();
+  }
+
+  // Navegación
+  if (jugando) {
+    const adelante = teclas["w"] || teclas["arrowup"], atras = teclas["s"] || teclas["arrowdown"];
+    const izq = teclas["a"] || teclas["arrowleft"], der = teclas["d"] || teclas["arrowright"];
+    let acel = 0, giro = 0;
+    if (adelante) acel = 1;
+    if (atras) acel = -.6;
+    if (izq) giro = -1;
+    if (der) giro = 1;
+    if (destino) {
+      const dx = destino.x - estado.x, dz = destino.z - estado.z, dist = Math.hypot(dx, dz);
+      if (dist > 2.5) {
+        giro = THREE.MathUtils.clamp(angDif(estado.rumbo, Math.atan2(dx, -dz)) * 2.2, -1, 1);
+        acel = Math.min(1, dist / 10) * (1 - Math.min(Math.abs(giro), 1) * .4);
+      } else if (!pulsando) destino = null;
+    }
+    if (acel || giro) movido = true;
+    estado.vel += acel * 14 * dt;
+    estado.vel *= Math.pow(.45, dt);
+    estado.vel = THREE.MathUtils.clamp(estado.vel, -5, 17);
+    estado.rumbo += giro * dt * (.65 + Math.min(Math.abs(estado.vel), 8) * .07);
+  } else {
+    estado.vel *= Math.pow(.3, dt);
+  }
+
+  estado.x += Math.sin(estado.rumbo) * estado.vel * dt;
+  estado.z += -Math.cos(estado.rumbo) * estado.vel * dt;
+
+  for (const i of islas) {
+    const dx = estado.x - i.x, dz = estado.z - i.z, d = Math.hypot(dx, dz), min = i.r * 1.25 + 1.8;
+    if (d < min) { estado.x = i.x + dx / d * min; estado.z = i.z + dz / d * min; estado.vel *= .6; }
+  }
+  const R = 100, dc = Math.hypot(estado.x, estado.z);
+  if (dc > R) { estado.x *= R / dc; estado.z *= R / dc; estado.vel *= .7; }
+
+  // Balanceo con las olas
+  const fx = Math.sin(estado.rumbo), fz = -Math.cos(estado.rumbo);
+  const hProa = ola(estado.x + fx * 2, estado.z + fz * 2, t), hPopa = ola(estado.x - fx * 2, estado.z - fz * 2, t);
+  const hBab = ola(estado.x - fz, estado.z + fx, t), hEst = ola(estado.x + fz, estado.z - fx, t);
+  barco.position.set(estado.x, (hProa + hPopa) / 2 + .35, estado.z);
+  barco.rotation.y = -estado.rumbo;
+  barco.rotation.x = (hProa - hPopa) * .22;
+  barco.rotation.z = (hEst - hBab) * .3 + THREE.MathUtils.clamp(estado.vel * .004, -.05, .05);
+  barco.userData.bandera.rotation.x = Math.sin(t * 8) * .25;
+
+  // Agua
+  agua.position.x = Math.round(estado.x / PASO) * PASO;
+  agua.position.z = Math.round(estado.z / PASO) * PASO;
+  uAgua.uTime.value = t;
+
+  // Marca de destino
+  marca.visible = !!destino;
+  if (destino) {
+    marca.position.set(destino.x, ola(destino.x, destino.z, t) + .4, destino.z);
+    marca.scale.setScalar(1 + Math.sin(t * 6) * .12);
+  }
+
+  // Estela
+  estelaT -= dt;
+  if (Math.abs(estado.vel) > 2.5 && estelaT <= 0) {
+    estelaT = .07;
+    const e = estela[estelaI++ % estela.length];
+    e.vida = 1; e.m.visible = true;
+    e.m.position.set(estado.x - fx * 2.6 + (Math.random() - .5) * .8, ola(estado.x, estado.z, t) + .3, estado.z - fz * 2.6 + (Math.random() - .5) * .8);
+  }
+  for (const e of estela) {
+    if (e.vida <= 0) continue;
+    e.vida -= dt * .8;
+    e.m.material.opacity = Math.max(0, e.vida) * (.7 - mezcla * .3);
+    e.m.scale.setScalar(1 + (1 - e.vida) * 2.2);
+    if (e.vida <= 0) e.m.visible = false;
+  }
+
+  // Animaciones del mundo
+  const vel = reduce ? .3 : 1;
+  for (const i of islas) {
+    const s = Math.sin(t * 1.5 + i.x);
+    i.espuma.scale.setScalar(i.r * (1 + s * .04));
+    i.espuma.material.opacity = (.4 + s * .12) * (1 - mezcla * .45);
+    const u = i.props?.userData || {};
+    if (u.haz) u.haz.rotation.y = t * .8 * vel;
+    if (u.caja) u.caja.position.y = 4.3 + Math.sin(t * 1.2) * .5;
+    if (u.libro) u.libro.rotation.y = Math.sin(t * .6) * .3;
+    if (u.luz) u.luz.material.emissiveIntensity = Math.sin(t * 4) > 0 ? 2 : .3;
+    if (u.llama && mezcla > 0) {
+      const f = .85 + Math.sin(t * 13) * .08 + Math.sin(t * 7.3) * .07;
+      u.llama.scale.set(1, f * 1.1, 1);
+      luzFogata.intensity = mezcla * 30 * f;
+    } else if (u.llama) luzFogata.intensity = 0;
+  }
+  for (const b of botellas) {
+    if (b.cogida) continue;
+    b.g.position.y = ola(b.x, b.z, t) + .2;
+    b.g.rotation.y = t * .7 + b.i;
+    if (jugando && Math.hypot(estado.x - b.x, estado.z - b.z) < 3.6) {
+      b.cogida = true; b.g.visible = false; botellasCogidas++;
+      const [ic, m] = mensajes[b.i];
+      document.querySelector("#cont-botellas span").textContent = `${botellasCogidas}/${botellas.length}`;
+      aviso(ic, `Mensaje en una botella · ${botellasCogidas}/${botellas.length}`, m);
+      if (botellasCogidas === botellas.length) setTimeout(() => aviso("✉️", "Todos los mensajes", "Encontraste los seis. Gracias por la curiosidad."), 5400);
+    }
+  }
+  for (const n of nubes) { n.position.x += n.userData.v * dt * vel; if (n.position.x > 140) n.position.x = -140; }
+  if (mezcla < .5) for (const g of gaviotas) {
+    const u = g.userData; u.a += u.v * dt * vel;
+    g.position.set(u.cx + Math.cos(u.a) * u.r, u.h + Math.sin(t + u.r) * .6, u.cz + Math.sin(u.a) * u.r);
+    g.rotation.y = -u.a;
+    const f = Math.sin(t * 7 + u.r) * .5 * vel;
+    u.pi.rotation.z = f; u.pd.rotation.z = -f;
+  }
+  estrellas.rotation.y = t * .004;
+
+  // Cámara
+  if (!jugando && !reduce) {
+    const a = t * .12;
+    camera.position.set(estado.x + Math.sin(a) * 34, 18, estado.z + Math.cos(a) * 34);
+    mirar.set(estado.x, 1, estado.z);
+  } else {
+    tmp.set(estado.x, 0, estado.z).add(camOffset);
+    camera.position.lerp(tmp, 1 - Math.exp(-dt * 3));
+    mirar.lerp(tmp.set(estado.x, 0, estado.z - 4), 1 - Math.exp(-dt * 4));
+  }
+  camera.lookAt(mirar);
+
+  // Etiquetas e islas cercanas
+  let cercana = null, dMin = Infinity;
+  const w = innerWidth, h = innerHeight;
+  for (const i of islas) {
+    const d = Math.hypot(estado.x - i.x, estado.z - i.z);
+    if (d < dMin) { dMin = d; cercana = i; }
+    tmp.set(i.x, i.alto, i.z).project(camera);
+    const vis = tmp.z < 1 && Math.abs(tmp.x) < 1.15 && Math.abs(tmp.y) < 1.15;
+    i.etiqueta.style.opacity = vis ? 1 : 0;
+    if (vis) {
+      const s = THREE.MathUtils.clamp(1.25 - d / 140, .72, 1.08);
+      i.etiqueta.style.transform = `translate(${(tmp.x * .5 + .5) * w}px, ${(-tmp.y * .5 + .5) * h}px) translate(-50%, -100%) scale(${s})`;
+    }
+  }
+  if (jugando && cercana) {
+    if (dMin < cercana.r + 9) { if (!descartada[cercana.clave]) abrirPanel(cercana); }
+    else if (islaAbierta && dMin > cercana.r + 13) cerrarPanel();
+    for (const i of islas) if (Math.hypot(estado.x - i.x, estado.z - i.z) > i.r + 13) descartada[i.clave] = false;
+  }
+
+  // HUD a 10 cuadros por segundo
+  if (t - ultimoHud > .1) {
+    ultimoHud = t;
+    const grados = ((THREE.MathUtils.radToDeg(estado.rumbo) % 360) + 360) % 360;
+    telemetria.innerHTML = `<i>x</i> ${estado.x.toFixed(1)} &nbsp;<i>z</i> ${estado.z.toFixed(1)}<br><i>rumbo</i> ${String(Math.round(grados)).padStart(3, "0")}° &nbsp;<i>nudos</i> ${Math.abs(estado.vel * 1.6).toFixed(1)}`;
+    dibujarRadar();
+    if (movido && ayuda.style.opacity !== "0") setTimeout(() => (ayuda.style.opacity = "0"), 3000);
+  }
+
+  renderer.render(scene, camera);
+}
+
+window.oceanoListo = true;
+document.getElementById("estado").innerHTML = '<span class="ok">✓ listo</span> · 5 islas · 6 mensajes por encontrar';
+document.getElementById("zarpar").disabled = false;
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
